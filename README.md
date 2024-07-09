@@ -36,7 +36,7 @@ levels.
 
 <p align="center">
 Game 1: <br/>
-<img src="https://imgur.com/undefined.png" height="80%" width="80%" alt=""/>
+<img src="https://imgur.com/1pAGL46.png" height="80%" width="80%" alt=""/>
 <br />
 <br />
 Game 2:  <br/>
