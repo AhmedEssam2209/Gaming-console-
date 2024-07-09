@@ -35,18 +35,15 @@ levels.
 <h2>Screenshots :</h2>
 
 <p align="center">
-Assembler: <br/>
-<img src="https://imgur.com/8hkbcDQ.png" height="80%" width="80%" alt=""/>
+Game 1: <br/>
+<img src="https://imgur.com/undefined.png" height="80%" width="80%" alt=""/>
 <br />
 <br />
-Pipeline (.io file in repo):  <br/>
-<img src="https://imgur.com/XwJcOSd.png" height="80%" width="80%" alt=""/>
+Game 2:  <br/>
+<img src="https://imgur.com/o1iDd9w.png" height="80%" width="80%" alt=""/>
 <br />
 <br />
-Waveform on modelsim:  <br/>
-<img src="https://imgur.com/RPwICuh.png" height="80%" width="80%" alt=""/>
-<br />
-<br />
+
 
 
 </p>
