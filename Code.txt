@@ -1,0 +1,3291 @@
+	AREA MYDATA, DATA, READONLY
+
+RCC_BASE EQU 0x40023800
+RCC_AHB1ENR EQU RCC_BASE + 0x30 ;this register is responsible for enabling certain ports, by making the clock affect the target port.
+
+GPIOE_BASE EQU 0x40021000	;Base of port E
+;this is where you write your data as an output into the port
+GPIOE_ODR EQU 0x40021014    ;output register of port E, PE0 - PE15
+GPIOE_MODER	EQU 0x40021000	;this is where you configure the port's direction as output
+
+
+GPIOC_BASE EQU 0x40020800
+GPIOC_PUPDR EQU GPIOC_BASE + 0x0C
+GPIOC_IDR EQU GPIOC_BASE + 0x10
+	
+;FOR US
+GPIOA_BASE EQU 0X40020000
+GPIOA_MODER EQU GPIOA_BASE + 0X0
+GPIOA_ODR EQU GPIOA_BASE + 0X14
+GPIOA_IDR EQU GPIOA_BASE + 0x10
+	
+GPIOB_BASE EQU 0X40020400
+GPIOB_MODER EQU GPIOB_BASE + 0X0
+GPIOB_ODR EQU GPIOB_BASE + 0X14
+GPIOB_IDR EQU GPIOB_BASE + 0x10
+
+
+INTERVAL EQU 0x186004		;just a number to perform the delay. this number takes roughly 1 second to decrement until it reaches 0
+
+
+	
+
+;the following are pins connected from the TFT to our EasyMX board
+;RD = PE10		Read pin	--> to read from touch screen input 
+;WR = PE11		Write pin	--> to write data/command to display
+;RS = PE12		Command pin	--> to choose command or data to write
+;CS = PE15		Chip Select	--> to enable the TFT, lol	(active low)
+;RST= PE8		Reset		--> to reset the TFT (active low)
+;D0-7 = PE0-7	Data BUS	--> Put your command or data on this bus
+
+;For Us:
+;D0-D7=A0-A7
+;RST=B0
+;CS=B8 ---
+;RS=B7 ---
+;WR=B6 ---
+;RD=B1
+
+
+
+
+;just some color codes, 16-bit colors coded in RGB 565
+BLACK	EQU   	0x0000
+BLUE 	EQU  	0x001F
+RED  	EQU  	0xF800
+RED2   	EQU 	0x4000
+GREEN 	EQU  	0x07E0
+CYAN  	EQU  	0x07FF
+MAGENTA EQU 	0xF81F
+YELLOW	EQU  	0xFFE0
+WHITE 	EQU  	0xFFFF
+GREEN2 	EQU 	0x2FA4
+CYAN2 	EQU  	0x07FF
+PINK	EQU		0XE836
+BANDANA	EQU		0XFFFF
+SKIN	EQU		0XFF9A
+EYES	EQU		0X467D
+LIPS	EQU		0XD873
+SILVER	EQU		0XAD55
+TOMMYB	EQU		0X0034
+TOMMYW	EQU		0XFFFF
+TOMMYR	EQU		0XE800
+PANTS	EQU		0X431D
+SHOES	EQU		0X0000
+GREY	EQU		0X4A49
+BACKGROUND_MENU	EQU		0X74B8
+
+	
+
+	EXPORT __main
+	
+	
+
+	AREA	MYCODE, CODE, READONLY
+	ENTRY
+	
+__main FUNCTION
+
+	;This is the main funcion, you should only call two functions, one that sets up the TFT
+	;And the other that draws a rectangle over the entire screen (ie from (0,0) to (320,240)) with a certain color of your choice
+
+
+	;CALL FUNCTION SETUP
+	BL SETUP
+
+
+	;FINAL TODO: DRAW THE ENTIRE SCREEN WITH A CERTAIN COLOR
+
+	;TODO: draw egypt
+	
+	;BL DRAW_MAIN_MENU
+	
+	;BL DRAW_MAIN_MENU
+	
+MAIN_LOOP
+	LDR R0, =GPIOB_IDR
+	LDR R1, [R0]
+	MOV R3, #1
+	LSL R3, #13
+	AND R1, R1, R3
+	CMP R1, #0
+	BNE SKIP1234
+	BL DRAW_MAZE_2
+SKIP1234
+
+	B MAIN_LOOP
+
+	
+	ENDFUNC
+
+
+
+
+
+
+
+
+
+
+
+;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ FUNCTIONS' DEFINITIONS @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+
+	
+
+
+
+;#####################################################################################################################################################################
+LCD_WRITE	FUNCTION
+	;this function takes what is inside r2 and writes it to the tft
+	;this function writes 8 bits only
+	;later we will choose whether those 8 bits are considered a command, or just pure data
+	;your job is to just write 8-bits (regardless if data or command) to PE0-7 and set WR appropriately
+	;arguments: R2 = data to be written to the D0-7 bus
+
+	;TODO: PUSH THE NEEDED REGISTERS TO SAVE THEIR CONTENTS. HINT: Push any register you will modify inside the function, and LR 
+	PUSH{R0-R12, LR}
+
+
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; SETTING WR to 0 ;;;;;;;;;;;;;;;;;;;;;
+	;TODO: RESET WR TO 0 - FOR US
+	LDR R0, =GPIOB_ODR
+	LDR R1, [R0]
+	MOV R3, #1
+	LSL R3, #2
+	MVN R3, R3
+	AND R1, R1, R3
+	STR R1, [R0]
+	
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+	;;;;;;;;;;;;; HERE YOU PUT YOUR DATA which is in R2 TO PE0-7 ;;;;;;;;;;;;;;;;;
+	;TODO: SET PE0-7 WITH THE LOWER 8-bits of R2 - FOR US
+	;only write the lower byte to PE0-7
+	LDR R0, =GPIOA_ODR
+	STRB R2, [R0]
+	
+
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+	;;;;;;;;;;;;;;;;;;;;;;;;;; SETTING WR to 1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	;TODO: SET WR TO 1 AGAIN (ie make a rising edge) - FOR US
+	LDR R0, =GPIOB_ODR
+	LDR R1, [R0]
+	MOV R3, #1
+	ORR R1, R1, R3, LSL #2
+	STR R1, [R0]
+	
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+	;TODO: POP THE REGISTERS YOU JUST PUSHED, and PC
+	POP{R0-R12, PC}
+	ENDFUNC
+	
+;#####################################################################################################################################################################
+
+
+
+
+
+
+
+
+
+
+
+;#####################################################################################################################################################################
+LCD_COMMAND_WRITE	FUNCTION
+	;this function writes a command to the TFT, the command is read from R2
+	;it writes LOW to RS first to specify that we are writing a command not data.
+	;then it normally calls the function LCD_WRITE we just defined above
+	;arguments: R2 = data to be written on D0-7 bus
+
+	;TODO: PUSH ANY NEEDED REGISTERS
+	PUSH{R0-R12,LR}
+	
+
+	;;;;;;;;;;;;;;;;;;;;;;;;;; SETTING RD to 1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	;TODO: SET RD HIGH (we won't need reading anyways, but we must keep read pin to high, which means we will not read anything) - FOR US
+	LDR R0, =GPIOB_ODR
+	LDR R1, [R0]
+	MOV R3, #1
+	ORR R1, R1, R3, LSL #1
+	STR R1, [R0]
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+	;;;;;;;;;;;;;;;;;;;;;;;;; SETTING RS to 0 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	;TODO: SET RS TO 0 (to specify that we are writing commands not data on the D0-7 bus) - FOR US
+	LDR R0, =GPIOB_ODR
+	LDR R1, [R0]
+	MOV R3, #1
+	LSL R3, #8
+	MVN R3, R3
+	AND R1, R1, R3
+	STR R1, [R0]
+	
+	
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+	;TODO: CALL FUNCTION LCD_WRITE
+	BL LCD_WRITE
+	
+
+
+	;TODO: POP ALL REGISTERS YOU PUSHED
+	POP{R0-R12, PC}
+	ENDFUNC
+	
+;#####################################################################################################################################################################
+
+
+
+
+
+
+;#####################################################################################################################################################################
+LCD_DATA_WRITE	FUNCTION
+	;this function writes Data to the TFT, the data is read from R2
+	;it writes HIGH to RS first to specify that we are writing actual data not a command.
+	;arguments: R2 = data
+
+	;TODO: PUSH ANY NEEDED REGISTERS
+	PUSH{R0-R12, LR}
+
+
+	;;;;;;;;;;;;;;;;;;;;;;;;;; SETTING RD to 1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	;TODO: SET RD HIGH (we won't need reading anyways, but we must keep read pin to high, which means we will not read anything) - FOR US
+	LDR R0, =GPIOB_ODR
+	LDR R1, [R0]
+	MOV R3, #1
+	ORR R1, R1, R3, LSL #1
+	STR R1, [R0]
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	
+
+
+
+	;;;;;;;;;;;;;;;;;;;; SETTING RS to 1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	;TODO: SET RS TO 1 (to specify that we are sending actual data not a command on the D0-7 bus)
+	LDR R0, =GPIOB_ODR
+	LDR R1, [R0]
+	MOV R3, #1
+	ORR R1, R1, R3, LSL #8
+	STR R1, [R0]
+	
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+	;TODO: CALL FUNCTION LCD_WRITE
+	BL LCD_WRITE
+	
+
+	;TODO: POP ANY REGISTER YOU PUSHED
+	POP{R0-R12, PC}
+	ENDFUNC
+	
+;#####################################################################################################################################################################
+
+
+
+
+; REVISE WITH YOUR TA THE LAST 3 FUNCTIONS (LCD_WRITE, LCD_COMMAND_WRITE AND LCD_DATA_WRITE BEFORE PROCEEDING)
+
+
+
+
+;#####################################################################################################################################################################
+LCD_INIT	FUNCTION
+	;This function executes the minimum needed LCD initialization measures
+	;Only the necessary Commands are covered
+	;Eventho there are so many more in the DataSheet
+
+	;TODO: PUSH ANY NEEDED REGISTERS
+	PUSH{R0-R12, LR}
+
+
+	;;;;;;;;;;;;;;;;; HARDWARE RESET (putting RST to high then low then high again) ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	;TODO: SET RESET PIN TO HIGH
+	LDR R0, =GPIOB_ODR
+	LDR R1, [R0]
+	MOV R3, #1
+	ORR R1, R1, R3, LSL #0
+	STR R1, [R0]
+
+	;TODO: DELAY FOR SOME TIME (USE ANY FUNCTION AT THE BOTTOM OF THIS FILE)
+	BL delay_half_second
+
+	;TODO: RESET RESET PIN TO LOW
+	LDR R0, =GPIOB_ODR
+	LDR R1, [R0]
+	MOV R3, #1
+	LSL R3, #0
+	MVN R3, R3
+	AND R1, R1, R3
+	STR R1, [R0]
+	
+
+	;TODO: DELAY FOR SOME TIME (USE ANY FUNCTION AT THE BOTTOM OF THIS FILE)
+	BL delay_half_second
+
+	;TODO: SET RESET PIN TO HIGH AGAIN
+	LDR R0, =GPIOB_ODR
+	LDR R1, [R0]
+	MOV R3, #1
+	ORR R1, R1, R3, LSL #0
+	STR R1, [R0]
+	
+
+	;TODO: DELAY FOR SOME TIME (USE ANY FUNCTION AT THE BOTTOM OF THIS FILE)
+	BL delay_half_second
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+
+
+
+	;;;;;;;;;;;;;;;;; PREPARATION FOR WRITE CYCLE SEQUENCE (setting CS to high, then configuring WR and RD, then resetting CS to low) ;;;;;;;;;;;;;;;;;;
+	;TODO: SET CS PIN HIGH
+	LDR R0, =GPIOB_ODR
+	LDR R1, [R0]
+	MOV R3, #1
+	ORR R1, R1, R3, LSL #6
+	STR R1, [R0]
+
+	;TODO: SET WR PIN HIGH
+	LDR R0, =GPIOB_ODR
+	LDR R1, [R0]
+	MOV R3, #1
+	ORR R1, R1, R3, LSL #2
+	STR R1, [R0]
+
+	;TODO: SET RD PIN HIGH
+	LDR R0, =GPIOB_ODR
+	LDR R1, [R0]
+	MOV R3, #1
+	ORR R1, R1, R3, LSL #1
+	STR R1, [R0]
+
+	;TODO: SET CS PIN LOW
+	LDR R0, =GPIOB_ODR
+	LDR R1, [R0]
+	MOV R3, #1
+	LSL R3, #6
+	MVN R3, R3
+	AND R1, R1, R3
+	STR R1, [R0]
+	
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	
+
+
+
+
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; SOFTWARE INITIALIZATION SEQUENCE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	;ISSUE THE "SET CONTRAST" COMMAND, ITS HEX CODE IS 0xC5
+	MOV R2, #0xC5
+	BL LCD_COMMAND_WRITE
+
+	;THIS COMMAND REQUIRES 2 PARAMETERS TO BE SENT AS DATA, THE VCOM H, AND THE VCOM L
+	;WE WANT TO SET VCOM H TO A SPECIFIC VOLTAGE WITH CORRESPONDS TO A BINARY CODE OF 1111111 OR 0x7F HEXA
+	;SEND THE FIRST PARAMETER (THE VCOM H) NEEDED BY THE COMMAND, WITH HEX 0x7F, PARAMETERS ARE SENT AS DATA BUT COMMANDS ARE SENT AS COMMANDS
+	MOV R2, #0x7F
+	BL LCD_DATA_WRITE
+
+	;WE WANT TO SET VCOM L TO A SPECIFIC VOLTAGE WITH CORRESPONDS TO A BINARY CODE OF 00000000 OR 0x00 HEXA
+	;SEND THE SECOND PARAMETER (THE VCOM L) NEEDED BY THE CONTRAST COMMAND, WITH HEX 0x00, PARAMETERS ARE SENT AS DATA BUT COMMANDS ARE SENT AS COMMANDS
+	MOV R2, #0x00
+	BL LCD_DATA_WRITE
+
+
+	;MEMORY ACCESS CONTROL AKA MADCLT | DATASHEET PAGE 127
+	;WE WANT TO SET MX (to draw from left to right) AND SET MV (to configure the TFT to be in horizontal landscape mode, not a vertical screen)
+	;TODO: ISSUE THE COMMAND MEMORY ACCESS CONTROL, HEXCODE 0x36
+	MOV R2, #0X36
+	BL LCD_COMMAND_WRITE
+	
+
+	;TODO: SEND ONE NEEDED PARAMETER ONLY WITH MX AND MV SET TO 1. HOW WILL WE SEND PARAMETERS? AS DATA OR AS COMMAND?
+	MOV R2, #0X28
+	BL LCD_DATA_WRITE
+	
+
+
+
+	;COLMOD: PIXEL FORMAT SET | DATASHEET PAGE 134
+	;THIS COMMAND LETS US CHOOSE WHETHER WE WANT TO USE 16-BIT COLORS OR 18-BIT COLORS.
+	;WE WILL ALWAYS USE 16-BIT COLORS
+	;TODO: ISSUE THE COMMAND COLMOD
+	MOV R2, #0X3A
+	BL LCD_COMMAND_WRITE
+	
+
+	;TODO: SEND THE NEEDED PARAMETER WHICH CORRESPONDS TO 16-BIT RGB AND 16-BIT MCU INTERFACE FORMAT
+	MOV R2, #0X55
+	BL LCD_DATA_WRITE
+	
+	
+
+	;SLEEP OUT | DATASHEET PAGE 101
+	;TODO: ISSUE THE SLEEP OUT COMMAND TO EXIT SLEEP MODE (THIS COMMAND TAKES NO PARAMETERS, JUST SEND THE COMMAND)
+	MOV R2, #0X11
+	BL LCD_COMMAND_WRITE
+
+	;NECESSARY TO WAIT 5ms BEFORE SENDING NEXT COMMAND
+	;I WILL WAIT FOR 10MSEC TO BE SURE
+	;TODO: DELAY FOR AT LEAST 10ms
+	BL delay_10_milli_second
+	
+
+
+	;DISPLAY ON | DATASHEET PAGE 109
+	;TODO: ISSUE THE COMMAND, IT TAKES NO PARAMETERS
+	MOV R2, #0X29
+	BL LCD_COMMAND_WRITE
+	
+
+
+	;COLOR INVERSION OFF | DATASHEET PAGE 105
+	;NOTE: SOME TFTs HAS COLOR INVERTED BY DEFAULT, SO YOU WOULD HAVE TO INVERT THE COLOR MANUALLY SO COLORS APPEAR NATURAL
+	;MEANING THAT IF THE COLORS ARE INVERTED WHILE YOU ALREADY TURNED OFF INVERSION, YOU HAVE TO TURN ON INVERSION NOT TURN IT OFF.
+	;TODO: ISSUE THE COMMAND, IT TAKES NO PARAMETERS
+	MOV R2, #0X20
+	BL LCD_COMMAND_WRITE
+	
+
+
+
+	;MEMORY WRITE | DATASHEET PAGE 245
+	;WE NEED TO PREPARE OUR TFT TO SEND PIXEL DATA, MEMORY WRITE SHOULD ALWAYS BE ISSUED BEFORE ANY PIXEL DATA SENT
+	;TODO: ISSUE MEMORY WRITE COMMAND
+	MOV R2, #0X2C
+	BL LCD_COMMAND_WRITE
+		
+
+
+	;TODO: POP ALL PUSHED REGISTERS
+	POP{R0-R12, PC}
+	ENDFUNC
+
+;#####################################################################################################################################################################
+
+
+SETUP	FUNCTION
+	;THIS FUNCTION ENABLES PORT E, MARKS IT AS OUTPUT, CONFIGURES SOME GPIO
+	;THEN FINALLY IT CALLS LCD_INIT (HINT, USE THIS SETUP FUNCTION DIRECTLY IN THE MAIN)
+	PUSH {R0-R12, LR}
+
+	;Make the clock affect port E by enabling the corresponding bit (the third bit) in RCC_AHB1ENR register
+	;FOR US We will wnable first three bits (ports A, B)
+	LDR r0, =RCC_AHB1ENR
+	LDR r1, [r0]
+	ORR r1, r1, #0x7
+	STR r1, [r0]
+	
+	
+	;Make the GPIO E mode as output (01 for each pin)
+	;FOR US ports A, B
+	LDR r0, =GPIOA_BASE
+	LDR R1, [R0]
+	ORR r1, R1, #0x00005500
+	ORR R1, R1 ,#0x55
+	STR r1, [r0]
+	
+	LDR r0, =GPIOB_BASE
+	LDR R1, [R0]
+	ORR r1, R1, #0x00005500
+	ORR R1, R1 ,#0x55
+	ORR R1, R1, #0x00550000
+	STR r1, [r0]
+	
+	LDR r0, =GPIOC_BASE
+	mov r1, #0x0
+	STR r1, [r0]
+	
+	
+	;Make the Output type as Push-Pull not Open-drain, by clearing all the bits in the lower 2 bytes of OTYPE register, the higher 2 bytes are reserved.
+	;FOR US ports A, B
+	mov r0, #0
+	LDR r1, =GPIOA_BASE
+	ADD r1, r1, #0x04 ;OFFSET OF OTYPER
+	STRH r0, [r1]
+	
+	mov r0, #0
+	LDR r1, =GPIOB_BASE
+	ADD r1, r1, #0x04 ;OFFSET OF OTYPER
+	STRH r0, [r1]
+	
+	mov r0, #0
+	LDR r1, =GPIOC_BASE
+	ADD r1, r1, #0x04	;go to OTYPER of GPIOE which is at offset 0x04 from base of GPIOE
+	STRH r0, [r1]
+	
+	;Make the Output speed as super fast by clearing all the bits in the OSPEED register
+	;00 means slow
+	;01 means medium
+	;10 means fast
+	;11 means super fast
+	;2 bits for each pin and we will choose slow
+	;this register just scales the time of flipping from low to high or from high to low.
+	;FOR US
+	mov r0, #0xFFFFFFFF
+	LDR r1, =GPIOA_BASE
+	ADD r1, r1, #0x08	;go to OSPEEDR 
+	STR r0, [r1]
+	
+	mov r0, #0xFFFFFFFF
+	LDR r1, =GPIOB_BASE
+	ADD r1, r1, #0x08	;go to OSPEEDR 
+	STR r0, [r1]
+	
+	mov r0, #0xFFFFFFFF
+	LDR r1, =GPIOC_BASE
+	ADD r1, r1, #0x08	;go to OSPEEDR of GPIOE which is at offset 0x08 from base of GPIOE
+	STR r0, [r1]
+
+	
+	;Clear the Pullup-pulldown bits for each port, we don't need the internal resistors
+	;FOR US
+	mov r0, #0X55555555
+	LDR r1, =GPIOA_BASE
+	ADD r1, r1, #0x0c	
+	STR r0, [r1]
+	
+	mov r0, #0X55555555
+	LDR r1, =GPIOB_BASE
+	ADD r1, r1, #0x0c	
+	STR r0, [r1]
+	
+	mov r0, #0X55555555
+	LDR r1, =GPIOC_BASE
+	ADD r1, r1, #0x0c	;go to PUPDR of GPIOE which is at offset 0x0C from base of GPIOE
+	STR r0, [r1]
+	
+	LDR r1, =GPIOA_ODR
+	LDR r0, [r1]
+	ORR r0, #0x00007F00
+	STR r0, [r1]
+	
+	LDR r1, =GPIOB_ODR
+	LDR r0, [r1]
+	ORR r0, #0x00007F00
+	STR	r0, [r1]
+	
+	
+	
+	
+	
+	
+	
+	
+
+	BL LCD_INIT
+
+	POP {R0-R12, PC}
+	ENDFUNC
+
+
+
+; REVISE THE FUNCTION LCD_INIT WITH YOUR TA BEFORE PROCEEDING
+
+	B SKIP_THIS_LINE
+	LTORG
+SKIP_THIS_LINE
+
+
+
+
+;#####################################################################################################################################################################
+ADDRESS_SET
+	;THIS FUNCTION TAKES X1, X2, Y1, Y2
+	;IT ISSUES COLUMN ADDRESS SET TO SPECIFY THE START AND END COLUMNS (X1 AND X2)
+	;IT ISSUES PAGE ADDRESS SET TO SPECIFY THE START AND END PAGE (Y1 AND Y2)
+	;THIS FUNCTION JUST MARKS THE PLAYGROUND WHERE WE WILL ACTUALLY DRAW OUR PIXELS, MAYBE TARGETTING EACH PIXEL AS IT IS.
+	;R0 = X1
+	;R1 = X2
+	;R3 = Y1
+	;R4 = Y2
+
+	;PUSHING ANY NEEDED REGISTERS
+	PUSH {R0-R4, LR}
+	
+
+	;COLUMN ADDRESS SET | DATASHEET PAGE 110
+	MOV R2, #0x2A
+	BL LCD_COMMAND_WRITE
+
+	;TODO: SEND THE FIRST PARAMETER (HIGHER 8-BITS OF THE STARTING COLUMN, AKA HIGHER 8-BITS OF X1)
+	MOV R2, R0, LSR #8
+	BL LCD_DATA_WRITE
+	
+
+	;TODO: SEND THE SECOND PARAMETER (LOWER 8-BITS OF THE STARTING COLUMN, AKA LOWER 8-BITS OF X1)
+	MOV R2, R0
+	BL LCD_DATA_WRITE
+
+
+	;TODO: SEND THE THIRD PARAMETER (HIGHER 8-BITS OF THE ENDING COLUMN, AKA HIGHER 8-BITS OF X2)
+	MOV R2, R1, LSR #8
+	BL LCD_DATA_WRITE
+
+	;TODO: SEND THE FOURTH PARAMETER (LOWER 8-BITS OF THE ENDING COLUMN, AKA LOWER 8-BITS OF X2)
+	MOV R2, R1
+	BL LCD_DATA_WRITE
+
+
+
+	;PAGE ADDRESS SET | DATASHEET PAGE 110
+	MOV R2, #0x2B
+	BL LCD_COMMAND_WRITE
+
+	;TODO: SEND THE FIRST PARAMETER (HIGHER 8-BITS OF THE STARTING PAGE, AKA HIGHER 8-BITS OF Y1)
+	MOV R2, R3, LSR #8
+	BL LCD_DATA_WRITE
+
+	;TODO: SEND THE SECOND PARAMETER (LOWER 8-BITS OF THE STARTING PAGE, AKA LOWER 8-BITS OF Y1)
+	MOV R2, R3
+	BL LCD_DATA_WRITE
+
+
+	;TODO: SEND THE THIRD PARAMETER (HIGHER 8-BITS OF THE ENDING PAGE, AKA HIGHER 8-BITS OF Y2)
+	MOV R2, R4, LSR #8
+	BL LCD_DATA_WRITE
+
+	;TODO: SEND THE FOURTH PARAMETER (LOWER 8-BITS OF THE ENDING PAGE, AKA LOWER 8-BITS OF Y2)
+	MOV R2, R4
+	BL LCD_DATA_WRITE
+
+	;MEMORY WRITE
+	MOV R2, #0x2C
+	BL LCD_COMMAND_WRITE
+
+
+	;POPPING ALL REGISTERS I PUSHED
+	POP {R0-R4, PC}
+;#####################################################################################################################################################################
+
+
+
+;#####################################################################################################################################################################
+DRAWPIXEL
+	PUSH {R0-R4, r10, LR}
+	;THIS FUNCTION TAKES X AND Y AND A COLOR AND DRAWS THIS EXACT PIXEL
+	;NOTE YOU HAVE TO CALL ADDRESS SET ON A SPECIFIC PIXEL WITH LENGTH 1 AND WIDTH 1 FROM THE STARTING COORDINATES OF THE PIXEL, THOSE STARTING COORDINATES ARE GIVEN AS PARAMETERS
+	;THEN YOU SIMPLY ISSUE MEMORY WRITE COMMAND AND SEND THE COLOR
+	;R0 = X
+	;R1 = Y
+	;R10 = COLOR
+	
+
+	;CHIP SELECT ACTIVE, WRITE LOW TO CS
+	LDR r3, =GPIOB_ODR
+	LDR r4, [r3]
+	AND r4, r4, #0xFFFFFFEF
+	STR r4, [r3]
+
+	;TODO: SETTING PARAMETERS FOR FUNC 'ADDRESS_SET' CALL, THEN CALL FUNCTION ADDRESS SET
+	;NOTE YOU MIGHT WANT TO PERFORM PARAMETER REORDERING, AS ADDRESS SET FUNCTION TAKES X1, X2, Y1, Y2 IN R0, R1, R3, R4 BUT THIS FUNCTION TAKES X,Y IN R0 AND R1
+	;REORDERING PARAMETERS
+	MOV R3, R1
+	ADD R1, R0, #1
+	
+	ADD R4, R3, #1
+	
+	BL ADDRESS_SET
+
+
+	
+
+
+	;SEND THE COLOR DATA | DATASHEET PAGE 114
+	;HINT: WE SEND THE HIGHER 8-BITS OF THE COLOR FIRST, THEN THE LOWER 8-BITS
+	;HINT: WE SEND THE COLOR OF ONLY 1 PIXEL BY 2 DATA WRITES, THE FIRST TO SEND THE HIGHER 8-BITS OF THE COLOR, THE SECOND TO SEND THE LOWER 8-BITS OF THE COLOR
+	;REMINDER: WE USE 16-BIT PER PIXEL COLOR
+	;TODO: SEND THE SINGLE COLOR, PASSED IN R10
+	MOV R2, R10, LSR #8
+	BL LCD_DATA_WRITE
+	
+	MOV R2, R10
+	BL LCD_DATA_WRITE
+	
+
+
+	
+	POP {R0-R4, r10, PC}
+;#####################################################################################################################################################################
+
+
+;	REVISE THE PREVIOUS TWO FUNCTIONS (ADDRESS_SET AND DRAW_PIXEL) WITH YOUR TA BEFORE PROCEEDING
+
+
+
+
+
+
+
+
+;##########################################################################################################################################
+DRAW_RECTANGLE_FILLED
+	;TODO: IMPLEMENT THIS FUNCTION ENTIRELY, AND SPECIFY THE ARGUMENTS IN COMMENTS, WE DRAW A RECTANGLE BY SPECIFYING ITS TOP-LEFT AND LOWER-RIGHT POINTS, THEN FILL IT WITH THE SAME COLOR
+	;X1 = [] r0
+	;Y1 = [] r1
+	;X2 = [] r3
+	;Y2 = [] r4
+	;COLOR = [] r10
+	PUSH{R0-R12, LR}
+	
+	;REORDERING
+	;X1 = [] r0
+	;X2 = [] r1
+	;Y1 = [] r3
+	;Y2 = [] r4
+	MOV R5, R1
+	MOV R1, R3
+	MOV R3, R5
+	
+	BL ADDRESS_SET
+	
+	;MEMORY WRITE
+	MOV R2, #0x2C
+	BL LCD_COMMAND_WRITE
+	
+	;AREA IN R5
+	SUB R5, R1, R0
+	ADD R5, #1
+	SUB R6, R4, R3
+	MUL R5, R5, R6
+	
+	
+DRAW_RECTANGLE
+	MOV R2, R10
+	LSR R2, #8
+	BL LCD_DATA_WRITE
+	MOV R2, R10
+	BL LCD_DATA_WRITE
+	SUB R5, R5, #1
+	CMP R5, #0
+	BGT DRAW_RECTANGLE
+	
+
+
+
+
+
+
+
+	POP{R0-R12, PC}
+
+;##########################################################################################################################################
+
+	B SKIPPP
+	LTORG
+SKIPPP
+
+
+;##########################################################################################################################################
+DRAW_EAGLE
+	PUSH{R0-R12, LR}
+	
+	LDR R10, =YELLOW
+	
+	MOV R0, #152
+	MOV R1, #102
+	MOV R3, #164
+	MOV R4, #110
+	BL DRAW_RECTANGLE_FILLED
+
+	MOV R0, #156
+	MOV R1, #110
+	MOV R3, #164
+	MOV R4, #138
+	BL DRAW_RECTANGLE_FILLED
+
+	MOV R0, #144
+	MOV R1, #114
+	MOV R3, #176
+	MOV R4, #126
+	BL DRAW_RECTANGLE_FILLED
+
+	MOV R0, #144
+	MOV R1, #110
+	MOV R3, #152
+	MOV R4, #130
+	BL DRAW_RECTANGLE_FILLED
+
+	MOV R0, #168
+	MOV R1, #110
+	MOV R3, #176
+	MOV R4, #130
+	BL DRAW_RECTANGLE_FILLED
+
+	MOV R0, #144
+	MOV R1, #106
+	MOV R3, #148
+	MOV R4, #134
+	BL DRAW_RECTANGLE_FILLED
+
+	MOV R0, #172
+	MOV R1, #106
+	MOV R3, #176
+	MOV R4, #134
+	BL DRAW_RECTANGLE_FILLED
+
+	MOV R0, #152
+	MOV R1, #130
+	MOV R3, #168
+	MOV R4, #138
+	BL DRAW_RECTANGLE_FILLED
+
+	MOV R0, #148
+	MOV R1, #134
+	MOV R3, #172
+	MOV R4, #138
+	BL DRAW_RECTANGLE_FILLED
+
+
+
+
+
+	POP{R0-R12, PC}
+
+
+;##########################################################################################################################################
+
+;##########################################################################################################################################
+DRAW_FLAG
+	PUSH{R0-R12, LR}
+	
+	LDR R10, =RED
+	MOV R0, #0
+	MOV R1, #0
+	MOV R3, #320
+	MOV R4, #80
+	BL DRAW_RECTANGLE_FILLED
+	
+	LDR R10, =WHITE
+	MOV R0, #0
+	MOV R1, #80
+	MOV R3, #320
+	MOV R4, #160
+	BL DRAW_RECTANGLE_FILLED
+	
+	LDR R10, =BLACK
+	MOV R0, #0
+	MOV R1, #160
+	MOV R3, #320
+	MOV R4, #240
+	BL DRAW_RECTANGLE_FILLED
+
+	BL DRAW_EAGLE
+	
+
+	POP{R0-R12, PC}
+;##########################################################################################################################################
+
+;#####################################################################################################################################################################
+
+;#####################################################################################################################################################################
+
+
+
+
+
+
+; HELPER DELAYS IN THE SYSTEM, YOU CAN USE THEM DIRECTLY
+
+
+;##########################################################################################################################################
+delay_1_second
+	;this function just delays for 1 second
+	PUSH {R8, LR}
+	LDR r8, =INTERVAL
+delay_loop
+	SUBS r8, #1
+	CMP r8, #0
+	BGE delay_loop
+	POP {R8, PC}
+;##########################################################################################################################################
+
+
+
+
+;##########################################################################################################################################
+delay_half_second
+	;this function just delays for half a second
+	PUSH {R8, LR}
+	LDR r8, =INTERVAL
+delay_loop1
+	SUBS r8, #2
+	CMP r8, #0
+	BGE delay_loop1
+
+	POP {R8, PC}
+;##########################################################################################################################################
+
+
+;##########################################################################################################################################
+delay_milli_second
+	;this function just delays for a millisecond
+	PUSH {R8, LR}
+	LDR r8, =INTERVAL
+delay_loop2
+	SUBS r8, #1000
+	CMP r8, #0
+	BGE delay_loop2
+
+	POP {R8, PC}
+;##########################################################################################################################################
+
+
+
+;##########################################################################################################################################
+delay_10_milli_second
+	;this function just delays for 10 millisecondS
+	PUSH {R8, LR}
+	LDR r8, =INTERVAL
+delay_loop3
+	SUBS r8, #100
+	CMP r8, #0
+	BGE delay_loop3
+
+	POP {R8, PC}
+
+	
+DRAW_HRECT
+		;R0=X
+		;R1=Y
+		;R3=X+40
+		;R4=Y+7
+		PUSH{R0-R12, LR}
+		ADD R3, R0, #40
+		ADD R4, R1, #7
+		LDR R10, =BLACK
+		BL DRAW_RECTANGLE_FILLED
+		POP{R0-R12, PC}
+;##########################################################################################################################################
+DRAW_VRECT
+		;R0=X
+		;R1=Y
+		;R3=X+8
+		;R4=Y+30
+		PUSH{R0-R12, LR}
+		ADD R3, R0, #8
+		ADD R4, R1, #30
+		LDR R10, =BLACK
+		BL DRAW_RECTANGLE_FILLED
+		POP{R0-R12, PC}
+
+
+;##########################################################################################################################################
+DRAW_2
+		;R0=X=35
+		;R1=Y=2
+		PUSH{R0-R12, LR}
+		ADD R3, R0, #20
+		ADD R4, R1, #5
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED ;DRAW UPPER RECT
+		ADD R0,R0, #15
+		ADD R1, R1, #5
+		ADD R3, R0, #5
+		ADD R4, R1, #5
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED 
+		SUB R0,R0, #15
+		SUB R1, R1, #5
+		;DRAW RIGHT PIXEL
+		ADD R1, R1, #10
+		ADD R3, R0, #20
+		ADD R4, R1, #5
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED 
+		SUB R1, R1, #10
+		
+		;DRAW  MIDDLE RECT
+		ADD R1, R1, #15
+		ADD R3, R0, #5
+		ADD R4, R1, #5
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED
+		SUB R1, R1, #15
+        ;DRAW LEFT PIXEL
+		ADD R1, R1, #20
+		ADD R3, R0, #20
+		ADD R4, R1, #5
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED  ;DRAW LOWER RECT
+		SUB R1, R1, #20
+		POP{R0-R12, PC}
+;##########################################################################################################################################
+DRAW_X
+		;R0=X=10
+		;R1=Y=2
+		PUSH{R0-R12, LR}
+		MOV R0, #10
+		MOV R1,#2
+		ADD R0,R0, #5
+		ADD R3, R0, #10
+		ADD R4, R1, #5
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED
+		MOV R0,#10
+		MOV R1, #7
+		ADD R3,R0, #5
+		ADD R4, R1, #15
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED
+		MOV R0,#25
+		MOV R1, #7
+		ADD R3,R0, #5
+		ADD R4, R1, #15
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED
+		MOV R0,#15
+		MOV R1, #22
+		ADD R3,R0, #10
+		ADD R4, R1, #5
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED
+		POP{R0-R12, PC}
+		
+		B SKIPX
+		LTORG
+SKIPX
+		
+		
+DRAW_COLON
+		;R0=X=60
+		;R1=Y=7
+		PUSH{R0-R12, LR}
+		MOV R0, #60
+		MOV R1, #7
+		MOV R3, #65
+		MOV R4,#12
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED
+		MOV R1, #17
+		MOV R4,#22
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED
+		POP{R0-R12, PC}
+;##########################################################################################################################################
+DRAW_PER
+		PUSH{R0-R12, LR}
+		MOV R0,#145
+		MOV R1, #2
+		ADD R3, R0, #5
+		ADD R4, R1, #5
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED
+		MOV R0,#160
+		MOV R1, #2
+		ADD R3, R0, #5
+		ADD R4, R1, #5
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED
+		MOV R0,#155
+		MOV R1, #7
+		ADD R3, R0, #5
+		ADD R4, R1, #5
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED
+		MOV R0,#150
+		MOV R1, #12
+		ADD R3, R0, #5
+		ADD R4, R1, #10
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED
+		MOV R0,#145
+		MOV R1, #22
+		ADD R3, R0, #5
+		ADD R4, R1, #5
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED
+		MOV R0,#160
+		MOV R1, #22
+		ADD R3, R0, #5
+		ADD R4, R1, #5
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED
+		POP{R0-R12, PC}
+		
+		
+	B SKIP7
+	LTORG
+SKIP7
+
+;#########################################################################################################################################	
+		
+DRAW_MAZE		
+		PUSH{R0-R12, LR}
+		; DRAW BACKGROUND
+		MOV R0,#0
+		MOV R1,#0
+		MOV R3,#320
+		MOV R4,#240
+		MOV R10, #0xBDF7
+		BL DRAW_RECTANGLE_FILLED
+		;DRAW SCORE
+		BL DRAW_X
+		MOV R0, #35
+		MOV R1, #2
+		BL DRAW_2
+		BL DRAW_COLON
+		MOV R0, #95
+		MOV R1,#2
+		BL DRAW_2
+		MOV R0, #120
+		
+
+		MOV R1,#2
+		BL DRAW_2
+		BL DRAW_PER
+		;DRAW START
+		MOV R0, #0
+		MOV R1, #107
+		ADD R3, R0, #8
+		ADD R4, R1, #30
+		LDR R10, =GREEN
+		BL DRAW_RECTANGLE_FILLED
+		;DRAW END
+		MOV R0, #312
+		MOV R1, #60
+		ADD R3, R0, #8
+		ADD R4, R1, #30
+		LDR R10, =YELLOW
+		BL DRAW_RECTANGLE_FILLED
+		;DRAW HORIZONTAL WALL
+		MOV R0, #0
+		MOV R1, #30
+		BL DRAW_HRECT
+		MOV R0, #40
+		MOV R1, #30
+		BL DRAW_HRECT
+		MOV R0, #80
+		MOV R1, #30
+		BL DRAW_HRECT
+		MOV R0, #120
+		MOV R1, #30
+		BL DRAW_HRECT
+		MOV R0, #160
+		MOV R1, #30
+		BL DRAW_HRECT
+		MOV R0, #200
+		MOV R1, #30
+		BL DRAW_HRECT
+		MOV R0, #240
+		MOV R1, #30
+		BL DRAW_HRECT
+		MOV R0, #280
+		MOV R1, #30
+		BL DRAW_HRECT
+		MOV R0, #320
+		MOV R1, #30
+		BL DRAW_HRECT
+		;RECT IN FRONT OF END
+		MOV R0, #232
+		MOV R1, #60
+		MOV R3, #240
+		MOV R4, #144
+		LDR R10, =BLACK
+		BL DRAW_RECTANGLE_FILLED
+		;DRAWING RECTS IN THE MIDDLE H
+		MOV R0, #160
+		MOV R1, #30
+		BL DRAW_VRECT
+		MOV R0, #160
+		MOV R1, #210
+		BL DRAW_VRECT
+		;DRAWING FIRST THIRD V
+		MOV R0, #40
+		MOV R1, #60
+		BL DRAW_HRECT
+		MOV R0, #80
+		MOV R1, #60
+		BL DRAW_HRECT
+		MOV R0, #120
+		MOV R1, #60
+		BL DRAW_HRECT
+		;DRAWING SECOND THIRD V
+		MOV R0, #0
+		MOV R1, #100
+		BL DRAW_HRECT
+		MOV R0, #40
+		MOV R1, #100
+		BL DRAW_HRECT
+		MOV R0, #80
+		MOV R1, #100
+		BL DRAW_HRECT
+		MOV R0, #120
+		MOV R1, #100
+		BL DRAW_HRECT
+		MOV R0, #160
+		MOV R1, #100
+		BL DRAW_HRECT
+		
+		MOV R0,#40
+		MOV R1, #137
+		BL DRAW_HRECT
+		
+		MOV R0,#112
+		MOV R1, #137
+		BL DRAW_HRECT
+		MOV R0,#152
+		MOV R1, #137
+		BL DRAW_HRECT
+		
+		MOV R0,#240
+		MOV R1, #137
+		BL DRAW_HRECT
+		MOV R0,#280
+		MOV R1, #137
+		BL DRAW_HRECT
+		
+		MOV R0,#40
+		MOV R1, #107
+		BL DRAW_VRECT
+		MOV R0,#112
+		MOV R1, #107
+		BL DRAW_VRECT
+		MOV R0,#72
+		MOV R1, #144
+		BL DRAW_VRECT
+		MOV R0,#112
+		MOV R1, #144
+		BL DRAW_VRECT
+		;DRAWING THIRD THIRD V
+		MOV R0,#40
+		MOV R1, #204
+		BL DRAW_HRECT
+		MOV R0,#280
+		MOV R1, #204
+		BL DRAW_HRECT
+		
+		MOV R0,#72
+		MOV R1, #174
+		BL DRAW_VRECT
+		MOV R0,#112
+		MOV R1, #174
+		BL DRAW_VRECT
+		MOV R0,#232
+		MOV R1, #180
+		BL DRAW_VRECT
+		MOV R0,#232
+		MOV R1, #210
+		BL DRAW_VRECT
+		
+		POP{R0-R12, PC}
+		
+;#########################################################################################################
+
+DRAW_MAZE2
+	PUSH{R0-R12, LR}
+	
+	; DRAW BACKGROUND
+		MOV R0,#0
+		MOV R1,#0
+		MOV R3,#320
+		MOV R4,#240
+		MOV R10, #0xBDF7
+		BL DRAW_RECTANGLE_FILLED
+		
+		;DRAW "02 : ___ %"
+		BL DRAW_X
+		MOV R0, #35
+		MOV R1, #2
+		BL DRAW_2
+		BL DRAW_COLON
+		BL DRAW_PER
+		
+		;DRAW HORIZONTAL WALL
+		MOV R0, #0
+		MOV R1, #30
+		BL DRAW_HRECT
+		MOV R0, #40
+		MOV R1, #30
+		BL DRAW_HRECT
+		MOV R0, #80
+		MOV R1, #30
+		BL DRAW_HRECT
+		MOV R0, #120
+		MOV R1, #30
+		BL DRAW_HRECT
+		MOV R0, #160
+		MOV R1, #30
+		BL DRAW_HRECT
+		MOV R0, #200
+		MOV R1, #30
+		BL DRAW_HRECT
+		MOV R0, #240
+		MOV R1, #30
+		BL DRAW_HRECT
+		MOV R0, #280
+		MOV R1, #30
+		BL DRAW_HRECT
+		MOV R0, #320
+		MOV R1, #30
+		BL DRAW_HRECT
+		
+		 
+	
+	POP{R0-R12, PC}
+		
+;#########################################################################################################
+
+DrawSprite_FaceUp FUNCTION
+	;TODO: IMPLEMENT THIS FUNCTION ENTIRELY, AND SPECIFY THE ARGUMENTS IN COMMENTS, WE DRAW A RECTANGLE BY SPECIFYING ITS TOP-LEFT AND LOWER-RIGHT POINTS, THEN FILL IT WITH THE SAME COLOR
+	;X1 = [] r0
+	;Y1 = [] r1
+	;SIZE is 23X10
+	
+	PUSH{R0-R12, LR}
+	
+	;Draw Left Shoulder
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0xF81F ;MAGENTA
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R1, #4
+	ADD R3, #5
+	ADD R4, #9
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	;Draw Right Shoulder
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0xF81F ;MAGENTA
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R0, #17
+	ADD R1, #4
+	ADD R3, #22
+	ADD R4, #9
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	;Draw Cap
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x001F
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R0, #6
+	ADD R1, #3
+	ADD R3, #16
+	ADD R4, #9
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x001F
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R0, #8
+	ADD R3, #14
+	ADD R4, #1
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x001F
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R0, #7
+	ADD R1, #2
+	ADD R3, #15
+	ADD R4, #2
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	POP{R0-R12, PC}
+	
+	ENDFUNC
+	
+;#################################################################################################################	
+	
+DrawSprite_FaceDown FUNCTION
+	;TODO: IMPLEMENT THIS FUNCTION ENTIRELY, AND SPECIFY THE ARGUMENTS IN COMMENTS, WE DRAW A RECTANGLE BY SPECIFYING ITS TOP-LEFT AND LOWER-RIGHT POINTS, THEN FILL IT WITH THE SAME COLOR
+	;X1 = [] r0
+	;Y1 = [] r1
+	;SIZE is 23X10
+	
+	PUSH{R0-R12, LR}
+	
+	;Draw Left Shoulder
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0xF81F ;MAGENTA
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R3, #5
+	ADD R4, #5
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	;Draw Right Shoulder
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0xF81F ;MAGENTA
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R0, #17
+	ADD R3, #22
+	ADD R4, #5
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	;Draw Cap
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x001F
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R0, #6
+	ADD R3, #16
+	ADD R4, #6
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x001F
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R0, #8
+	ADD R1, #8
+	ADD R3, #14
+	ADD R4, #9
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x001F 
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R0, #7
+	ADD R1, #7
+	ADD R3, #15
+	ADD R4, #7
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	POP{R0-R12, PC}
+	
+	ENDFUNC
+
+;#################################################################################################################
+
+DrawSprite_FaceLeft FUNCTION
+	;TODO: IMPLEMENT THIS FUNCTION ENTIRELY, AND SPECIFY THE ARGUMENTS IN COMMENTS, WE DRAW A RECTANGLE BY SPECIFYING ITS TOP-LEFT AND LOWER-RIGHT POINTS, THEN FILL IT WITH THE SAME COLOR
+	;X1 = [] r0
+	;Y1 = [] r1
+	;SIZE is 23X10
+	
+	PUSH{R0-R12, LR}
+	
+	;Draw Left Shoulder
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0xF81F ;MAGENTA
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R0, #4
+	ADD R1, #17
+	ADD R3, #9
+	ADD R4, #22
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	;Draw Right Shoulder
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0xF81F ;MAGENTA
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R0, #4
+	ADD R3, #9
+	ADD R4, #5
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	;Draw Cap
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x001F ;BLUE
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R0, #3
+	ADD R1, #6
+	ADD R3, #9
+	ADD R4, #16
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x001F ;BLUE
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R0, #2
+	ADD R1, #7
+	ADD R3, #9
+	ADD R4, #15
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x001F ;BLUE
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R1, #8
+	ADD R3, #9
+	ADD R4, #14
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	POP{R0-R12, PC}
+	
+	ENDFUNC
+	
+;#################################################################################################################
+
+DrawSprite_FaceRight FUNCTION
+	;TODO: IMPLEMENT THIS FUNCTION ENTIRELY, AND SPECIFY THE ARGUMENTS IN COMMENTS, WE DRAW A RECTANGLE BY SPECIFYING ITS TOP-LEFT AND LOWER-RIGHT POINTS, THEN FILL IT WITH THE SAME COLOR
+	;X1 = [] r0
+	;Y1 = [] r1
+	;SIZE is 23X10
+	
+	PUSH{R0-R12, LR}
+	
+	;Draw Left Shoulder
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0xF81F ;MAGENTA
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R3, #5
+	ADD R4, #5
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	;Draw Right Shoulder
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0xF81F ;MAGENTA
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R1, #17
+	ADD R3, #5
+	ADD R4, #22
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	;Draw Cap
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x001F ;BLUE
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R1, #6
+	ADD R3, #6
+	ADD R4, #16
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x001F ;BLUE
+	MOV R3, R0
+	MOV R4, R1
+	 
+	ADD R0, #7
+	ADD R1, #7
+	ADD R3, #7
+	ADD R4, #15
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x001F ;BLUE
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #8
+	ADD R1, #8
+	ADD R3, #9
+	ADD R4, #14
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	POP{R0-R12, PC}
+	
+	ENDFUNC
+
+;#########################################################################################################
+
+DrawKey FUNCTION
+	;TODO: IMPLEMENT THIS FUNCTION ENTIRELY, AND SPECIFY THE ARGUMENTS IN COMMENTS, WE DRAW A RECTANGLE BY SPECIFYING ITS TOP-LEFT AND LOWER-RIGHT POINTS, THEN FILL IT WITH THE SAME COLOR
+	;X1 = [] r0
+	;Y1 = [] r1
+	;SIZE is 14X6
+	
+	PUSH{R0-R12, LR}
+	
+	;Draw Key Tail
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0xFFE0 ;YELLOW
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R1, #2
+	ADD R3, #9
+	ADD R4, #3
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+
+	;#######################################
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0xFFE0 ;YELLOW
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #3
+	ADD R1, #4
+	ADD R3, #3
+	ADD R4, #5
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	;#######################################
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0xFFE0 ;YELLOW
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R1, #4
+	ADD R3, #1
+	ADD R4, #5
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	;#######################################
+	
+	;Draw Head
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0xFFE0 ;YELLOW
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #9
+	ADD R3, #13
+	ADD R4, #1
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	;#######################################
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0xFFE0 ;YELLOW
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #9
+	ADD R1, #4
+	ADD R3, #13
+	ADD R4, #5
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	;#######################################
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0xFFE0 ;YELLOW
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #12
+	ADD R1, #2
+	ADD R3, #13
+	ADD R4, #3
+	
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	;######################################
+	
+	POP{R0-R12, PC}
+	
+	ENDFUNC
+		
+;#######################################################################################################
+
+DrawO2 FUNCTION	
+	;TODO: IMPLEMENT THIS FUNCTION ENTIRELY, AND SPECIFY THE ARGUMENTS IN COMMENTS, WE DRAW A RECTANGLE BY SPECIFYING ITS TOP-LEFT AND LOWER-RIGHT POINTS, THEN FILL IT WITH THE SAME COLOR
+	;X1 = [] r0
+	;Y1 = [] r1
+	;SIZE is 12X18
+	
+	PUSH{R0-R12, LR}
+	
+	;Draw Tank
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0xD69A ;LIGHT GRAY
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R1, #5
+	ADD R3, #11
+	ADD R4, #17
+
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+
+	;#######################################
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x0184 ;DARK GREEN
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R1, #3
+	ADD R3, #11
+	ADD R4, #4
+
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	;#######################################
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x0184 ;DARK GREEN
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #1
+	ADD R1, #2
+	ADD R3, #10
+	ADD R4, #2
+
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP{R0-R4,R10}
+	
+	;#######################################
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x0184 ;DARK GREEN
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #2
+	ADD R1, #1
+	ADD R3, #9
+	ADD R4, #1
+	
+	BL DRAW_RECTANGLE_FILLED
+
+	POP{R0-R4,R10}
+	
+	;#######################################
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x0184 ;DARK GREEN
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #3
+	ADD R3, #8
+	
+	BL DRAW_RECTANGLE_FILLED
+
+	POP{R0-R4,R10}
+	
+	;#######################################
+	
+	;Draw O2
+	
+	;Draw O
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x0184 ;DARK GREEN
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #3
+	ADD R1, #9
+	ADD R3, #4
+	ADD R4, #9
+	
+	BL DRAW_RECTANGLE_FILLED
+
+	POP{R0-R4,R10}
+	;#######################################
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x0184 ;DARK GREEN
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #2
+	ADD R1, #10
+	ADD R3, #2
+	ADD R4, #12
+	
+	BL DRAW_RECTANGLE_FILLED
+
+	POP{R0-R4,R10}
+	
+	;#######################################
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x0184 ;DARK GREEN
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #5
+	ADD R1, #10
+	ADD R3, #5
+	ADD R4, #12
+	
+	BL DRAW_RECTANGLE_FILLED
+
+	POP{R0-R4,R10}
+	
+	;#######################################
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x0184 ;DARK GREEN
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #3
+	ADD R1, #13
+	ADD R3, #4
+	ADD R4, #13
+		
+	BL DRAW_RECTANGLE_FILLED
+
+	POP{R0-R4,R10}
+	
+	;Draw 2
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x0184 ;DARK GREEN
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #7
+	ADD R1, #9
+	ADD R3, #9
+	ADD R4, #9
+	
+	BL DRAW_RECTANGLE_FILLED
+
+	POP{R0-R4,R10}
+	
+	;#######################################
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x0184 ;DARK GREEN
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #9
+	ADD R1, #9
+	ADD R3, #9
+	ADD R4, #11
+	
+	BL DRAW_RECTANGLE_FILLED
+
+	POP{R0-R4,R10}
+	
+	;#######################################
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x0184 ;DARK GREEN
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #7
+	ADD R1, #11
+	ADD R3, #9
+	ADD R4, #11
+	
+	BL DRAW_RECTANGLE_FILLED
+
+	POP{R0-R4,R10}
+	
+	;#######################################
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x0184 ;DARK GREEN
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #7
+	ADD R1, #11
+	ADD R3, #7
+	ADD R4, #13
+	
+	BL DRAW_RECTANGLE_FILLED
+
+	POP{R0-R4,R10}
+	
+	;#######################################
+	
+	PUSH{R0-R4,R10}
+	
+	MOV R10, #0x0184 ;DARK GREEN
+	MOV R3, R0
+	MOV R4, R1
+	
+	ADD R0, #7
+	ADD R1, #13
+	ADD R3, #9
+	ADD R4, #13
+
+	BL DRAW_RECTANGLE_FILLED
+
+	POP{R0-R4,R10}
+	
+	POP{R0-R12, PC}
+	
+	ENDFUNC
+	
+	
+	;##########################################################################
+	
+DRAW_CAKE
+	;R0 = X1
+	;R1 = Y
+	;R3 = X2
+	;R10 = COLOR
+	;
+	;R4 = Y2
+	PUSH {R0-R12, LR}
+	
+	ADD R4, R1, #7 
+	MOV R11, R10
+	LDR R10, =WHITE
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R4, R1, #30
+	MOV R10, R11
+	ADD R1, R1, #7
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP {R0-R12, PC}
+	
+DRAW_CAKE1
+	;R0 = X1
+	;R3 = X2
+	;R10 = COLOR
+	;
+	;R1 = Y1 = 210
+	;R4 = Y2
+	PUSH {R0-R12, LR}
+	
+	MOV R1, #210
+	BL DRAW_CAKE
+
+	POP {R0-R12, PC}
+	
+DRAW_CAKE2
+	;R0 = X1
+	;R3 = X2
+	;R10 = COLOR
+	;
+	;R1 = Y1 = 180
+	;R4 = Y2
+	PUSH {R0-R12, LR}
+	
+	MOV R1, #180
+	BL DRAW_CAKE
+
+	POP {R0-R12, PC}
+	
+DRAW_CAKE3
+	;R0 = X1
+	;R3 = X2
+	;R10 = COLOR
+	;
+	;R1 = Y1 = 150
+	;R4 = Y2
+	PUSH {R0-R12, LR}
+	
+	MOV R1, #150
+	BL DRAW_CAKE
+
+	POP {R0-R12, PC}
+	
+DRAW_CAKE4
+	;R0 = X1
+	;R3 = X2
+	;R10 = COLOR
+	;
+	;R1 = Y1 = 120
+	;R4 = Y2
+	PUSH {R0-R12, LR}
+	
+	MOV R1, #120
+	BL DRAW_CAKE
+
+	POP {R0-R12, PC}
+	
+	B SKIPK
+	LTORG
+SKIPK
+	
+	;###########################################################################################
+DRAW_MINICAKE 
+	;R0 = X1
+	;R1 = Y
+	;R3 = X2
+	;R10 = COLOR
+	;
+	;R4 = Y2
+	PUSH {R0-R12, LR}
+	MOV R0,#33 
+	MOV R1, #39
+	ADD R3, R0, #21
+	ADD R4, R1, #9
+	
+	MOV R5, R4
+	ADD R4, R1, #3 
+	MOV R11, R10
+	LDR R10, =WHITE
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R4, R5
+	ADD R1, R1, #3
+	MOV R10, R11
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP {R0-R12, PC}
+	
+	B SKIPY
+	LTORG
+SKIPY
+	
+	
+DRAW_HABEB
+	PUSH {R0-R12, LR}
+
+	LDR R10, =BANDANA
+	
+	MOV R0, #8
+	MOV R1, #12
+	MOV R3, #30
+	MOV R4, #18
+	BL DRAW_RECTANGLE_FILLED
+	
+	
+	LDR R10, =SKIN
+	
+	MOV R0, #9
+	MOV R1, #18
+	MOV R3, #30
+	MOV R4, #39
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #15
+	MOV R1, #39
+	MOV R3, #24
+	MOV R4, #42
+	BL DRAW_RECTANGLE_FILLED
+	
+	
+	LDR R10, =EYES
+	
+	MOV R0, #12
+	MOV R1, #21
+	MOV R3, #15
+	MOV R4, #24
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #24
+	MOV R1, #21
+	MOV R3, #27
+	MOV R4, #24
+	BL DRAW_RECTANGLE_FILLED
+	
+	
+	LDR R10, =LIPS
+	
+	MOV R0, #15
+	MOV R1, #30
+	MOV R3, #24
+	MOV R4, #33
+	BL DRAW_RECTANGLE_FILLED
+	
+	
+	LDR R10, =BLACK
+	
+	MOV R0, #12
+	MOV R1, #39
+	MOV R3, #15
+	MOV R4, #42
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #24
+	MOV R1, #39
+	MOV R3, #27
+	MOV R4, #42
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #9
+	MOV R1, #42
+	MOV R3, #30
+	MOV R4, #69
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #6
+	MOV R1, #45
+	MOV R3, #9
+	MOV R4, #66
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #30
+	MOV R1, #45
+	MOV R3, #33
+	MOV R4, #57
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #33
+	MOV R1, #54
+	MOV R3, #42
+	MOV R4, #57
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #39
+	MOV R1, #51
+	MOV R3, #42
+	MOV R4, #54
+	BL DRAW_RECTANGLE_FILLED
+	
+	
+	LDR R10, =SILVER
+	
+	MOV R0, #33
+	MOV R1, #48
+	MOV R3, #54
+	MOV R4, #51
+	BL DRAW_RECTANGLE_FILLED
+	
+	
+	LDR R10, =TOMMYB
+	
+	MOV R0, #12
+	MOV R1, #51
+	MOV R3, #24
+	MOV R4, #60
+	BL DRAW_RECTANGLE_FILLED
+	
+	
+	LDR R10, =TOMMYW
+	
+	MOV R0, #12
+	MOV R1, #54
+	MOV R3, #18
+	MOV R4, #57
+	BL DRAW_RECTANGLE_FILLED
+	
+	
+	LDR R10, =TOMMYR
+	
+	MOV R0, #18
+	MOV R1, #54
+	MOV R3, #24
+	MOV R4, #57
+	BL DRAW_RECTANGLE_FILLED
+	
+	
+	LDR R10, =PANTS
+	
+	MOV R0, #12
+	MOV R1, #69
+	MOV R3, #18
+	MOV R4, #87
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #21
+	MOV R1, #69
+	MOV R3, #27
+	MOV R4, #87
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #18
+	MOV R1, #69
+	MOV R3, #21
+	MOV R4, #72
+	BL DRAW_RECTANGLE_FILLED
+	
+	
+	LDR R10, =SHOES
+	
+	MOV R0, #12
+	MOV R1, #87
+	MOV R3, #18
+	MOV R4, #90
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #21
+	MOV R1, #87
+	MOV R3, #27
+	MOV R4, #90
+	BL DRAW_RECTANGLE_FILLED
+	
+	
+	LDR R10, =PINK
+	
+	MOV R0, #9
+	MOV R1, #9
+	MOV R3, #30
+	MOV R4, #12
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #6
+	MOV R1, #12
+	MOV R3, #12
+	MOV R4, #15
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #27
+	MOV R1, #12
+	MOV R3, #33
+	MOV R4, #15
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #6
+	MOV R1, #15
+	MOV R3, #9
+	MOV R4, #36
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #30
+	MOV R1, #15
+	MOV R3, #33
+	MOV R4, #36
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #9
+	MOV R1, #33
+	MOV R3, #12
+	MOV R4, #39
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #27
+	MOV R1, #33
+	MOV R3, #30
+	MOV R4, #39
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #12
+	MOV R1, #36
+	MOV R3, #15
+	MOV R4, #39
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #24
+	MOV R1, #36
+	MOV R3, #27
+	MOV R4, #39
+	BL DRAW_RECTANGLE_FILLED
+	
+
+	POP {R0-R12, PC}
+	
+	
+DRAW_GAME1
+	PUSH {R0-R12, LR}
+
+	MOV R0, #0
+	MOV R1, #0
+	MOV R3, #320
+	MOV R4, #240
+	MOV R10, #0XBEBF
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, #100
+	MOV R3, #220
+	MOV R10, #0X9226
+	BL DRAW_CAKE1
+	MOV R10, #0XE005
+	BL DRAW_CAKE2
+	MOV R10, #0XFFFD
+	MOV R3, #190
+	BL DRAW_CAKE3
+	MOV R0, #30
+	MOV R3, #120
+	MOV R10, #0XF374
+	BL DRAW_CAKE4
+	
+	MOV R1, #2
+	MOV R0, #260
+	BL DRAW_2
+	MOV R0, #290
+	BL DRAW_2
+	
+	BL DRAW_MINICAKE
+	
+	BL DRAW_HABEB
+	
+	
+	POP {R0-R12, PC}
+	
+	
+DRAW_GAME2
+	PUSH {R0-R12, LR}
+	
+	BL DRAW_MAZE
+	
+	mov r0, #140
+	MOV R1, #45
+	BL DrawKey
+	
+	mov r0, #15
+	MOV R1, #150
+	BL DrawSprite_FaceDown
+	
+	mov r0, #290
+	MOV R1, #215
+	BL DrawO2
+	
+	POP {R0-R12, PC}
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	;main menu
+	; DRAW_TRIANGLE_FILLED
+; X1 = [] r0 (left point)
+; X2 = [] r1 (right point)
+; Y = [] r3 (base point)
+; COLOR = [] r10
+
+DRAW_TRIANGLE
+	PUSH {R0-R12, LR}
+	;X = R5
+	;Y = R6
+	;COLOR = R10
+	MOV R0, R5
+	ADD R1, R6, #4
+	ADD R3, R0, #8
+	ADD R4, R1, #12
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, R5
+	MOV R1, R6
+	ADD R3, R0, #4
+	ADD R4, R1, #20
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, R5
+	ADD R1, R6, #8
+	ADD R3, R0, #12
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP {R0-R12, PC}
+	
+	
+DRAW_G
+	;X = R5
+	;Y = R6
+	;COLOR = R10
+	PUSH {R0-R12, LR}
+	
+	ADD R0, R5, #4
+	MOV R1, R6
+	ADD R3, R0, #8
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	MOV R0, R5
+	ADD R1, R6, #4
+	ADD R3, R0, #4
+	ADD R4, R1, #12
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #4
+	ADD R1, R6, #16
+	ADD R3, R0, #8
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #8
+	ADD R1, R6, #8
+	ADD R3, R0, #8
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #12
+	ADD R1, R6, #12
+	ADD R3, R0, #4
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP {R0-R12, PC}
+	
+	
+	
+DRAW_A
+	;X = R5
+	;Y = R6
+	;COLOR = R10
+	PUSH {R0-R12, LR}
+	
+	ADD R0, R5, #4
+	ADD R1, R6, #0
+	ADD R3, R0, #8
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #0
+	ADD R1, R6, #4
+	ADD R3, R0, #4
+	ADD R4, R1, #16
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #12
+	ADD R1, R6, #4
+	ADD R3, R0, #4
+	ADD R4, R1, #16
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #0
+	ADD R1, R6, #8
+	ADD R3, R0, #16
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP {R0-R12, PC}
+	
+	
+	
+DRAW_M
+	;X = R5
+	;Y = R6
+	;COLOR = R10
+	PUSH {R0-R12, LR}
+	
+	ADD R0, R5, #0
+	ADD R1, R6, #0
+	ADD R3, R0, #4
+	ADD R4, R1, #20
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #16
+	ADD R1, R6, #0
+	ADD R3, R0, #4
+	ADD R4, R1, #20
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #4
+	ADD R1, R6, #4
+	ADD R3, R0, #4
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #8
+	ADD R1, R6, #8
+	ADD R3, R0, #4
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #12
+	ADD R1, R6, #4
+	ADD R3, R0, #4
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP {R0-R12, PC}
+	
+	
+	
+DRAW_E
+	;X = R5
+	;Y = R6
+	;COLOR = R10
+	PUSH {R0-R12, LR}
+	
+	ADD R0, R5, #0
+	ADD R1, R6, #0
+	ADD R3, R0, #16
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #0
+	ADD R1, R6, #8
+	ADD R3, R0, #12
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #0
+	ADD R1, R6, #16
+	ADD R3, R0, #16
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #0
+	ADD R1, R6, #0
+	ADD R3, R0, #4
+	ADD R4, R1, #20
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP {R0-R12, PC}
+	
+	
+	
+DRAW_I
+	;X = R5
+	;Y = R6
+	;COLOR = R10
+	PUSH {R0-R12, LR}
+	
+	ADD R0, R5, #0
+	ADD R1, R6, #0
+	ADD R3, R0, #12
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #0
+	ADD R1, R6, #16
+	ADD R3, R0, #12
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #4
+	ADD R1, R6, #0
+	ADD R3, R0, #4
+	ADD R4, R1, #20
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP {R0-R12, PC}
+	
+	
+DRAW_N
+	;X = R5
+	;Y = R6
+	;COLOR = R10
+	PUSH {R0-R12, LR}
+	
+	ADD R0, R5, #0
+	ADD R1, R6, #0
+	ADD R3, R0, #4
+	ADD R4, R1, #20
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #12
+	ADD R1, R6, #0
+	ADD R3, R0, #4
+	ADD R4, R1, #20
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #4
+	ADD R1, R6, #4
+	ADD R3, R0, #4
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #8
+	ADD R1, R6, #8
+	ADD R3, R0, #4
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP {R0-R12, PC}
+	
+	
+DRAW_U
+	;X = R5
+	;Y = R6
+	;COLOR = R10
+	PUSH {R0-R12, LR}
+	
+	ADD R0, R5, #0
+	ADD R1, R6, #0
+	ADD R3, R0, #4
+	ADD R4, R1, #16
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #4
+	ADD R1, R6, #16
+	ADD R3, R0, #8
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #12
+	ADD R1, R6, #0
+	ADD R3, R0, #4
+	ADD R4, R1, #16
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP {R0-R12, PC}
+	
+	
+	
+	
+	
+DRAW_NUMBER_1
+	;X = R5
+	;Y = R6
+	;COLOR = R10
+	PUSH {R0-R12, LR}
+	
+	ADD R0, R5, #4
+	ADD R1, R6, #0
+	ADD R3, R0, #4
+	ADD R4, R1, #20
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #0
+	ADD R1, R6, #4
+	ADD R3, R0, #8
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #0
+	ADD R1, R6, #16
+	ADD R3, R0, #12
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	
+	POP {R0-R12, PC}
+	
+	
+DRAW_NUMBER_2
+	;X = R5
+	;Y = R6
+	;COLOR = R10
+	PUSH {R0-R12, LR}
+	
+	ADD R0, R5, #4
+	ADD R1, R6, #0
+	ADD R3, R0, #8
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #0
+	ADD R1, R6, #4
+	ADD R3, R0, #4
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #12
+	ADD R1, R6, #4
+	ADD R3, R0, #4
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #8
+	ADD R1, R6, #8
+	ADD R3, R0, #4
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #4
+	ADD R1, R6, #12
+	ADD R3, R0, #4
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	ADD R0, R5, #0
+	ADD R1, R6, #16
+	ADD R3, R0, #16
+	ADD R4, R1, #4
+	BL DRAW_RECTANGLE_FILLED
+	
+	POP {R0-R12, PC}
+	
+	
+	
+DRAW_LETTERS_MAIN_MENU
+	;COLOR = R10
+	PUSH {R0-R12, LR}
+
+	MOV R6, #56
+	
+	MOV R5, #68
+	BL DRAW_M
+	
+	MOV R5, #92
+	BL DRAW_A
+	
+	MOV R5, #112
+	BL DRAW_I
+	
+	MOV R5, #128
+	BL DRAW_N
+	
+	MOV R5, #156
+	BL DRAW_M
+	
+	MOV R5, #180
+	BL DRAW_E
+	
+	MOV R5, #200
+	BL DRAW_N
+	
+	MOV R5, #220
+	BL DRAW_U
+	
+	POP {R0-R12, PC}
+	
+DRAW_LETTERS_GAME_1
+	;COLOR = R10
+	PUSH {R0-R12, LR}
+	
+	MOV R6, #96
+	
+	MOV R5, #108
+	BL DRAW_G
+	
+	MOV R5, #128
+	BL DRAW_A
+	
+	MOV R5, #148
+	BL DRAW_M
+	
+	MOV R5, #172
+	BL DRAW_E
+	
+	MOV R5, #200
+	BL DRAW_NUMBER_1
+	
+	POP {R0-R12, PC}
+	
+	
+DRAW_LETTERS_GAME_2
+	;COLOR = R10
+	PUSH {R0-R12, LR}
+	
+	MOV R6, #132
+	
+	MOV R5, #108
+	BL DRAW_G
+	
+	MOV R5, #128
+	BL DRAW_A
+	
+	MOV R5, #148
+	BL DRAW_M
+	
+	MOV R5, #172
+	BL DRAW_E
+	
+	MOV R5, #200
+	BL DRAW_NUMBER_2
+	
+	POP {R0-R12, PC}
+	
+	
+DRAW_TRIANGLE_POS_1
+	PUSH {R0-R12, LR}
+	
+	MOV R0, #68
+	MOV R1, #132
+	ADD R3, R0, #25
+	ADD R4, R1, #25
+	LDR R10, =BACKGROUND_MENU
+	BL DRAW_RECTANGLE_FILLED
+	
+	LDR R10, =YELLOW
+	MOV R5, #68
+	MOV R6, #96
+	BL DRAW_TRIANGLE
+	
+	POP {R0-R12, PC}
+	
+	
+	
+DRAW_TRIANGLE_POS_2
+	PUSH {R0-R12, LR}
+	
+	MOV R0, #68
+	MOV R1, #96
+	ADD R3, R0, #25
+	ADD R4, R1, #25
+	LDR R10, =BACKGROUND_MENU
+	BL DRAW_RECTANGLE_FILLED
+	
+	LDR R10, =YELLOW
+	MOV R5, #68
+	MOV R6, #132
+	BL DRAW_TRIANGLE
+	
+	POP {R0-R12, PC}
+	
+	
+SELECT_GAME_1
+	PUSH {R0-R12, LR}
+	
+	LDR R10, =YELLOW
+	BL DRAW_LETTERS_GAME_1
+	
+	LDR R10, =GREY
+	BL DRAW_LETTERS_GAME_2
+	
+	BL DRAW_TRIANGLE_POS_1
+	
+	POP {R0-R12, PC}
+	
+	
+SELECT_GAME_2
+	PUSH {R0-R12, LR}
+	
+	LDR R10, =YELLOW
+	BL DRAW_LETTERS_GAME_2
+	
+	LDR R10, =GREY
+	BL DRAW_LETTERS_GAME_1
+	
+	BL DRAW_TRIANGLE_POS_2
+	
+	POP {R0-R12, PC}
+	
+	
+DRAW_MAIN_MENU
+	PUSH {R0-R12, LR}
+	
+	MOV R0, #0
+	MOV R1, #0
+	MOV R3, #320
+	MOV R4, #240
+	LDR R10, =BACKGROUND_MENU
+	BL DRAW_RECTANGLE_FILLED
+	
+	LDR R10, =BLACK
+	BL DRAW_LETTERS_MAIN_MENU
+	
+	BL SELECT_GAME_1
+	
+	
+	
+	
+	POP {R0-R12, PC}
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	
+	
+	
+DRAW_MAZE_2
+	PUSH {R0-R12, LR}
+	; DRAW BACKGROUND
+	MOV R0,#0
+	MOV R1,#0		
+    MOV R3,#320
+    MOV R4,#240
+	MOV R10, #0xBDF7
+	BL DRAW_X
+	MOV R0, #35
+	MOV R1, #2
+	BL DRAW_2
+	BL DRAW_COLON 	
+	BL DRAW_PER	 
+	;DRAW UPPERWALL
+	MOV R0, #0
+	MOV R1, #28
+	MOV R3, #320
+	MOV R4, #32
+	LDR R10,=BLACK 
+	BL DRAW_RECTANGLE_FILLED
+	;DRAW START
+	MOV R0, #0
+	MOV R1, #216
+	MOV R3, #8
+	MOV R4, #240
+	LDR R10,=GREEN
+	BL DRAW_RECTANGLE_FILLED
+	;DRAW END
+	MOV R0, #312
+	MOV R1, #60
+	MOV R3, #320
+	MOV R4, #84
+	LDR R10,=YELLOW
+	BL DRAW_RECTANGLE_FILLED
+	;DRAW KEY
+	MOV R0, #0
+	MOV R1, #36
+	BL DrawKey
+	;DRAW O2 TANKS
+	MOV R0, #156
+	MOV R1, #156
+	BL DrawO2
+	MOV R0, #304
+	MOV R1, #92
+	BL DrawO2
+	;DRAW V1
+	MOV R0, #148
+	MOV R1, #32
+	MOV R3, #152
+	MOV R4, #52
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #232
+	MOV R1, #32
+	MOV R3, #236
+	MOV R4, #64
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	;DRAW V2
+	MOV R0, #24
+	MOV R1, #60
+	MOV R3, #28
+	MOV R4, #112
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #52
+	MOV R1, #84
+	MOV R3, #56
+	MOV R4, #140
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #80
+	MOV R1, #60
+	MOV R3, #84
+	MOV R4, #120
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #108
+	MOV R1, #60
+	MOV R3, #112
+	MOV R4, #140
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #120
+	MOV R1, #108
+	MOV R3, #124
+	MOV R4, #124
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #148
+	MOV R1, #80
+	MOV R3, #152
+	MOV R4, #124
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #176
+	MOV R1, #60
+	MOV R3, #180
+	MOV R4, #92
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #232
+	MOV R1, #120
+	MOV R3, #236
+	MOV R4, #152
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #260
+	MOV R1, #60
+	MOV R3, #264
+	MOV R4, #124
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #292
+	MOV R1, #88
+	MOV R3, #296
+	MOV R4, #156
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	;DRAW V3 
+	MOV R0, #24
+	MOV R1, #168
+	MOV R3, #28
+	MOV R4, #188
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #52
+	MOV R1, #168
+	MOV R3, #56
+	MOV R4, #212
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #80
+	MOV R1, #144
+	MOV R3, #84
+	MOV R4, #180
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #116
+	MOV R1, #208
+	MOV R3, #120
+	MOV R4, #240
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #144
+	MOV R1, #152
+	MOV R3, #148
+	MOV R4, #212
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #176
+	MOV R1, #152
+	MOV R3, #180
+	MOV R4, #188
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #204
+	MOV R1, #156
+	MOV R3, #208
+	MOV R4, #212
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #232
+	MOV R1, #184
+	MOV R3, #236
+	MOV R4, #240
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #284
+	MOV R1, #184
+	MOV R3, #288
+	MOV R4, #208
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	;DRAW H1
+	MOV R0, #0
+	MOV R1, #56
+	MOV R3, #116
+	MOV R4, #60
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #108
+	MOV R1, #76
+	MOV R3, #184
+	MOV R4, #80
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #176
+	MOV R1, #56
+	MOV R3, #212
+	MOV R4, #60
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #204
+	MOV R1, #88
+	MOV R3, #268
+	MOV R4, #92
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #260
+	MOV R1, #56
+	MOV R3, #320
+	MOV R4, #60
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #292
+	MOV R1, #84
+	MOV R3, #320
+	MOV R4, #88
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	;DRAW H2
+	MOV R0, #0
+	MOV R1, #136
+	MOV R3, #60
+	MOV R4, #140
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #80
+	MOV R1, #104
+	MOV R3, #128
+	MOV R4, #108
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #176
+	MOV R1, #116
+	MOV R3, #240
+	MOV R4, #120
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #24
+	MOV R1, #164
+	MOV R3, #60
+	MOV R4, #168
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #80
+	MOV R1, #148
+	MOV R3, #184
+	MOV R4, #152
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #80
+	MOV R1, #176
+	MOV R3, #124
+	MOV R4, #180
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #204
+	MOV R1, #152
+	MOV R3, #300
+	MOV R4, #156
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	;DRAW H3
+	MOV R0, #0
+	MOV R1, #212
+	MOV R3, #60
+	MOV R4, #216
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #80
+	MOV R1, #204
+	MOV R3, #124
+	MOV R4, #208
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #144
+	MOV R1, #212
+	MOV R3, #212
+	MOV R4, #216
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #232
+	MOV R1, #180
+	MOV R3, #292
+	MOV R4, #184
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #260
+	MOV R1, #208
+	MOV R3, #292
+	MOV R4, #212
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	MOV R0, #312
+	MOV R1, #200
+	MOV R3, #320
+	MOV R4, #204
+	LDR R10,=BLACK
+	BL DRAW_RECTANGLE_FILLED
+	POP {R0-R12, PC}
+
+	
+	
+	
+	END
