@@ -10,8 +10,7 @@ Built a gaming console with 2 games using ARM assembly on a microcontroller
 
 Built a gaming console with 2 games using ARM assembly on a STM microcontroller.
 
-Game 1:
-Name: A Breathtaking Adventure
+Game 1: A Breathtaking Adventure  
 Description:
 A Breathtaking Adventure is an immersive and thrilling game where players take on the 
 role of a courageous explorer trapped in a labyrinth. The objective is to navigate through 
@@ -19,8 +18,7 @@ a maze, find a key to unlock a door, and locate the exit before running out of o
 game features challenging puzzles, limited resources, and a race against time.
 
 
-Game 2:
-Name: Habeeb's Bakery
+Game 2: Habeeb's Bakery   
 Description:
 Habeeb's Bakery is a delightful and addictive game where players take on the role of a 
 skilled cake baker named Habeeb. The goal is to stack cake layers perfectly to create 
